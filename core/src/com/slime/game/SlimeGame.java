@@ -16,8 +16,15 @@ import com.badlogic.gdx.physics.box2d.CircleShape;
 import com.badlogic.gdx.physics.box2d.Fixture;
 import com.badlogic.gdx.physics.box2d.FixtureDef;
 import com.badlogic.gdx.physics.box2d.World;
+import com.badlogic.gdx.scenes.scene2d.Action;
 import com.badlogic.gdx.scenes.scene2d.Actor;
+import com.badlogic.gdx.scenes.scene2d.InputEvent;
+import com.badlogic.gdx.scenes.scene2d.InputListener;
 import com.badlogic.gdx.scenes.scene2d.Stage;
+import com.badlogic.gdx.scenes.scene2d.actions.Actions;
+import com.badlogic.gdx.scenes.scene2d.actions.RotateToAction;
+import com.badlogic.gdx.scenes.scene2d.actions.RunnableAction;
+import com.badlogic.gdx.utils.Pool;
 import com.badlogic.gdx.utils.viewport.StretchViewport;
 
 /*
@@ -45,20 +52,18 @@ public class SlimeGame extends ApplicationAdapter {
 	public class Slime extends Actor {
 		TextureRegion region;
 		Body body;
-		
-		//where to define new actions?
-		//action vs method?
+		Runnable flapRunnable;
 		
 	    public Slime() {
 	        region = new TextureRegion(new Texture(Gdx.files.internal("slimeball.png")));
 	        
 	        //needs better place
-	        setWidth(20); //use pixel or box_to_world shenanagains
-	        setHeight(20);
+	        setWidth(50); //use pixel or box_to_world shenanagains
+	        setHeight(50);
 	        
 	        BodyDef bodyDef = new BodyDef(); //create new one every time?
 	        bodyDef.type = BodyDef.BodyType.DynamicBody;
-	        bodyDef.position.set(300 * WORLD_TO_BOX, 500 * WORLD_TO_BOX);
+	        bodyDef.position.set(300 * WORLD_TO_BOX, 300 * WORLD_TO_BOX);
 	        body = world.createBody(bodyDef);
 	        
 	        CircleShape circle = new CircleShape();
@@ -73,6 +78,16 @@ public class SlimeGame extends ApplicationAdapter {
 	        Fixture fixture = body.createFixture(fixtureDef);
 	        
 	        circle.dispose();
+	        
+	        //WOULD COLLISION BE AN ACTION?
+			flapRunnable = new Runnable() { //move to other place
+				@Override
+				public void run() {
+					body.setLinearVelocity(new Vector2(0, 3));
+				}};
+				
+			//orginize better
+			setBounds(0, 0, 50, 50); //height vs bounds?
 	    }
 	    
 	    @Override
@@ -82,7 +97,7 @@ public class SlimeGame extends ApplicationAdapter {
 	    	setY(body.getPosition().y * BOX_TO_WORLD);
 	    	setRotation(MathUtils.radiansToDegrees * body.getAngle());
 	    }
-
+		
 	    @Override
 	    public void draw(Batch batch, float parentAlpha) {
 	        Color color = getColor();
@@ -96,10 +111,14 @@ public class SlimeGame extends ApplicationAdapter {
 	public void create() {
 		stage = new Stage(new StretchViewport(640,480));
 		Gdx.input.setInputProcessor(stage);
-		
-		world = new World(new Vector2(0, -10), true);
-		
+		world = new World(new Vector2(0, -10), true); //gravity as variable?
 		Slime slime = new Slime();
+		stage.addListener(new InputListener() {
+		    public boolean keyDown (InputEvent event, int keyCode) {
+		        slime.addAction(Actions.run(slime.flapRunnable));
+		        return true;
+		    }
+		});
 		stage.addActor(slime);
 	}
 	
@@ -111,8 +130,9 @@ public class SlimeGame extends ApplicationAdapter {
 	@Override
 	public void render() {
 		Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
-		stepPhysics(Gdx.graphics.getDeltaTime());
-		stage.act();
+		float delta = Gdx.graphics.getDeltaTime();
+		stepPhysics(delta);
+		stage.act(delta);
 		stage.draw();
 	}
 	
